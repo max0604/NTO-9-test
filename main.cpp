@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <fstream>
+#include <exception>
 #include <experimental/filesystem>
 
 namespace fs = std::experimental::filesystem;
@@ -75,7 +76,6 @@ int main(int argc, char** argv)
             {
                it.join();
             }
-            //threads_vector.clear();
             i = 0;
         }
         threads_vector.at(i++) = std::thread(routine, it, result_file_name);
