@@ -36,8 +36,8 @@ std::function<void(const std::string&, const std::string&)> routine = [](const s
         output_file << strings.at(i);
     }
 
-    std::cout << "From Thread ID : "<< std::this_thread::get_id() << std::endl;
-    std::cout << "path : "<< file_path << std::endl;
+    // std::cout << "From Thread ID : "<< std::this_thread::get_id() << std::endl;
+    // std::cout << "path : "<< file_path << std::endl;
 };
 
 int main(int argc, char** argv)
@@ -62,29 +62,39 @@ int main(int argc, char** argv)
         threads_nb = std::thread::hardware_concurrency();
     }
 
-    std::remove(result_file_name.c_str());
+    try {
+        std::remove(result_file_name.c_str());
+        std::vector<std::thread> threads_vector(threads_nb);
+        auto all_files = get_all_file_paths(directory_path);
 
-    std::vector<std::thread> threads_vector(threads_nb);
-    auto all_files = get_all_file_paths(directory_path);
-
-    size_t i = 0;
-    for (const auto& it : all_files)
-    {
-        if (i == threads_vector.size())
+        size_t i = 0;
+        for (const auto& it : all_files)
         {
-            for (auto& it : threads_vector)
+            if (i == threads_vector.size())
             {
-               it.join();
+                for (auto& it : threads_vector)
+                {
+                    if (it.joinable())
+                    {
+                        it.join();
+                    }
+                }
+                i = 0;
             }
-            i = 0;
+            threads_vector.at(i++) = std::thread(routine, it, result_file_name);
         }
-        threads_vector.at(i++) = std::thread(routine, it, result_file_name);
-    }
 
-    for (auto& it : threads_vector)
+        for (auto& it : threads_vector)
+        {
+            if (it.joinable())
+            {
+                it.join();
+            }
+        }
+    }
+    catch (std::exception& ex)
     {
-        if (it.joinable())
-            it.join();
+        std::cout << ex.what() << std::endl;
     }
 
     return 0;

@@ -1,15 +1,15 @@
-[/home/max/projects/NTO-9-test/files/test.txt]
-a
-b
-c
-asdf
-
 [/home/max/projects/NTO-9-test/files/test2.txt]
 voavwfva
 adfaweefwe
 aefweafawef
 aefwaefwaeff
 aewffwfwafe
+
+[/home/max/projects/NTO-9-test/files/test.txt]
+a
+b
+c
+asdf
 
 [/home/max/projects/NTO-9-test/files/test3.txt]
 voavwfva
@@ -25,6 +25,13 @@ aefweafawef
 aefwaefwaeff
 aewffwfwafe
 
+[/home/max/projects/NTO-9-test/files/test4.txt]
+voavwfva
+adfaweefwe
+aefweafawef
+aefwaefwaeff
+aewffwfwafe
+
 [/home/max/projects/NTO-9-test/files/test1.txt]
 afawefawef
 awgawwawg
@@ -32,11 +39,4 @@ afawfwef
 tymm
 tyjyjt
 tyjtyj
-
-[/home/max/projects/NTO-9-test/files/test4.txt]
-voavwfva
-adfaweefwe
-aefweafawef
-aefwaefwaeff
-aewffwfwafe
 
