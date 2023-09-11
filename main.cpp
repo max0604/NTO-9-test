@@ -1,47 +1,43 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
-#include <condition_variable>
 #include <vector>
 #include <functional>
 #include <fstream>
-#include <queue>
 #include <experimental/filesystem>
 
 namespace fs = std::experimental::filesystem;
 
 std::mutex m;
-std::queue<std::vector<std::string>> q;
-
-char separator = ';';
+const static char separator = ';';
 
 void usage();
 std::vector<std::string>& get_all_file_paths(const std::string dir_path);
 std::function<void(const std::string&, const std::string&)> routine = [](const std::string& file_path,
-                                                                const std::string& output_file_path) {
-                        std::ifstream input_file(file_path);
-                        std::vector<std::string> strings;
-                        std::string s;
-                        while (std::getline(input_file, s, separator)) {
-                            strings.push_back(s + "\n");
-                        }
-                        input_file.close();
+                                                                const std::string& output_file_path)
+{
+    std::ifstream input_file(file_path);
+    std::vector<std::string> strings;
+    std::string s;
+    while (std::getline(input_file, s, separator))
+    {
+        strings.push_back(s + "\n");
+    }
+    input_file.close();
 
-                        std::lock_guard<std::mutex> guard(m);
+    std::lock_guard<std::mutex> guard(m);
 
-                        q.push(strings);
+    std::ofstream output_file(output_file_path, std::ios::app);
+    output_file << "[" << file_path << "]" << std::endl;
 
-                        thread_local std::ofstream output_file(output_file_path, std::ios::app);
-                        output_file << "[" << file_path << "]" << std::endl;
+    for (size_t i = 0; i < strings.size(); ++i)
+    {
+        output_file << strings.at(i);
+    }
 
-                        for (size_t i = 0; i < strings.size(); ++i)
-                        {
-                            output_file << strings.at(i);
-                        }
-
-                        std::cout << "From Thread ID : "<< std::this_thread::get_id() << std::endl;
-                        std::cout << "path : "<< file_path << std::endl;
-                    };
+    std::cout << "From Thread ID : "<< std::this_thread::get_id() << std::endl;
+    std::cout << "path : "<< file_path << std::endl;
+};
 
 int main(int argc, char** argv)
 {
@@ -65,28 +61,29 @@ int main(int argc, char** argv)
         threads_nb = std::thread::hardware_concurrency();
     }
 
-    // удалим файл при старте
     std::remove(result_file_name.c_str());
 
     std::vector<std::thread> threads_vector(threads_nb);
     auto all_files = get_all_file_paths(directory_path);
 
+    size_t i = 0;
     for (const auto& it : all_files)
     {
-        threads_vector.push_back(std::thread(routine, it, result_file_name));
-
-        //if (q.size() == threads_nb)
-        //{
-        //    q.
-        //}
+        if (i == threads_vector.size())
+        {
+            for (auto& it : threads_vector)
+            {
+               it.join();
+            }
+            //threads_vector.clear();
+            i = 0;
+        }
+        threads_vector.at(i++) = std::thread(routine, it, result_file_name);
     }
 
     for (auto& it : threads_vector)
     {
-        if (it.joinable())
-        {
-            it.join();
-        }
+        it.join();
     }
 
     return 0;
