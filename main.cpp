@@ -83,7 +83,8 @@ int main(int argc, char** argv)
 
     for (auto& it : threads_vector)
     {
-        it.join();
+        if (it.joinable())
+            it.join();
     }
 
     return 0;
