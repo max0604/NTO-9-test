@@ -11,33 +11,39 @@ namespace fs = std::experimental::filesystem;
 
 std::mutex m;
 const static char separator = ';';
+static std::exception_ptr globalExceptionPtr = nullptr;
 
 void usage();
 std::vector<std::string>& get_all_file_paths(const std::string dir_path);
 std::function<void(const std::string&, const std::string&)> routine = [](const std::string& file_path,
                                                                 const std::string& output_file_path)
 {
-    std::ifstream input_file(file_path);
-    std::vector<std::string> strings;
-    std::string s;
-    while (std::getline(input_file, s, separator))
-    {
-        strings.push_back(s + "\n");
+    try {
+        std::ifstream input_file(file_path);
+        std::vector<std::string> strings;
+        std::string s;
+        while (std::getline(input_file, s, separator))
+        {
+            strings.push_back(s + "\n");
+        }
+        input_file.close();
+
+        std::lock_guard<std::mutex> guard(m);
+
+        std::ofstream output_file(output_file_path, std::ios::app);
+        output_file << "[" << file_path << "]" << std::endl;
+
+        for (size_t i = 0; i < strings.size(); ++i)
+        {
+            output_file << strings.at(i);
+        }
+
+        // std::cout << "From Thread ID : "<< std::this_thread::get_id() << std::endl;
+        // std::cout << "path : "<< file_path << std::endl;
+
+    } catch (...) {
+        globalExceptionPtr = std::current_exception();
     }
-    input_file.close();
-
-    std::lock_guard<std::mutex> guard(m);
-
-    std::ofstream output_file(output_file_path, std::ios::app);
-    output_file << "[" << file_path << "]" << std::endl;
-
-    for (size_t i = 0; i < strings.size(); ++i)
-    {
-        output_file << strings.at(i);
-    }
-
-    // std::cout << "From Thread ID : "<< std::this_thread::get_id() << std::endl;
-    // std::cout << "path : "<< file_path << std::endl;
 };
 
 int main(int argc, char** argv)
@@ -62,40 +68,46 @@ int main(int argc, char** argv)
         threads_nb = std::thread::hardware_concurrency();
     }
 
-    try {
-        std::remove(result_file_name.c_str());
-        std::vector<std::thread> threads_vector(threads_nb);
-        auto all_files = get_all_file_paths(directory_path);
+    std::remove(result_file_name.c_str());
+    std::vector<std::thread> threads_vector(threads_nb);
+    auto all_files = get_all_file_paths(directory_path);
 
-        size_t i = 0;
-        for (const auto& it : all_files)
-        {
-            if (i == threads_vector.size())
-            {
-                for (auto& it : threads_vector)
-                {
-                    if (it.joinable())
-                    {
-                        it.join();
-                    }
-                }
-                i = 0;
-            }
-            threads_vector.at(i++) = std::thread(routine, it, result_file_name);
-        }
-
-        for (auto& it : threads_vector)
-        {
-            if (it.joinable())
-            {
-                it.join();
-            }
-        }
-    }
-    catch (std::exception& ex)
+    size_t i = 0;
+    for (const auto& it : all_files)
     {
-        std::cout << ex.what() << std::endl;
+        if (i == threads_vector.size())
+        {
+            for (auto& it : threads_vector)
+            {
+                if (it.joinable())
+                {
+                    it.join();
+                }
+            }
+            i = 0;
+        }
+        threads_vector.at(i++) = std::thread(routine, it, result_file_name);
     }
+
+    for (auto& it : threads_vector)
+    {
+        if (it.joinable())
+        {
+            it.join();
+        }
+    }
+
+    if (globalExceptionPtr)
+     {
+        try
+        {
+            std::rethrow_exception(globalExceptionPtr);
+        }
+        catch (const std::exception &ex)
+        {
+            std::cout << "Thread exited with exception: " << ex.what() << "\n";
+        }
+     }
 
     return 0;
 }
